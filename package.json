@@ -1,0 +1,19 @@
+{
+	"author": {
+		"name": "Eero Pikat",
+		"email": "eero.pikat@barchart.com",
+		"url": "http://www.barchart.com"
+	},
+	"name": "chat4node",
+	"description": "node.js chat server",
+	"version": "0.0.1",
+	"private": true,
+	"scripts": {
+		"start": "node app"
+	},
+	"dependencies": {
+		"express": "~4.9.0",
+		"mongodb": ">=2.0.14",
+		"socket.io": "~1.0.0"
+	}
+}
