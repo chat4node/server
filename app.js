@@ -19,25 +19,38 @@
  * Core includes.
  */
 
-var app = require('express')();
+var express = require('express');
+var app = express();
+var path = require('path');
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
-
 var mongo = require('mongodb').MongoClient;
 
-var user = null;
-var socket = null;
-
 var settings = {
+	"mongodb" : 'localhost',
 	"port" : process.env.PORT || 8081,
 	"documentRoot" : __dirname,
 };
 
+var mongodb = null;
+mongo.connect('mongodb://' + settings.mongodb + '/chat4node', function(err, db) {
+	if (err)
+		console.err(err);
+	mongodb = db;
+});	
+
+
 server.listen(settings.port);
 
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', function(req, res) {
-	res.sendFile(__dirname + '/index.html');
+	res.sendFile(__dirname + '/public/index.html');
 });
+
+
+function verifyAdminRights(user) {
+	return true;
+}
 
 function poll() {
 //	if (socket)
@@ -45,38 +58,57 @@ function poll() {
 //	setTimeout(poll, 100);
 }
 
-io.on('connection', function(s) {
-	socket = s;
+io.on('connection', function(socket) {
+	var user = null;
 
-	socket.emit('welcome', { 'item1' : '1'} );
+	socket.emit('welcome', { 'item1' : '2'} );
+
+	socket.on('admin', function(data) {
+		if (!verifyAdminRights(user))
+			socket.emit('admin', { action : data.action, status : 'fail' });
+		else {
+			switch (data.action) {
+				case 'editUser':
+					break;
+				case 'listGroups':
+					break;
+				case 'listUsers':
+					mongodb.collection('users').find({}).toArray(function(err, docs) {
+						if (!err)
+							socket.emit('admin', { action : 'listUsers', status : 'ok', users : docs });
+					});
+					break;
+			}
+		}
+	});
+
+	socket.on('disconnect', function() {
+		if (user)
+			console.log(user.username + ' disconnected');
+	});
 
 	socket.on('login', function(data) {
-		mongo.connect('mongodb://localhost/chat4node', function(err, db) {
+		var collection = mongodb.collection('users');
+		collection.find({ 'username' : data.username }).toArray(function(err, docs) {					
 			if (err) {
-				socket.emit('chaterror', {});
+				socket.emit('chaterror', { 'message' : 'Some error' });
+			}
+			else if (docs.length == 1) {
+				if (data.password == docs[0].password) {
+					user = docs[0];
+
+					socket.emit('login', { status: 'ok'} );
+					mongodb.collection('connections').deleteMany({ 'username' : data.username }, function(err, res) {
+						console.log('Add new entry');
+						mongodb.collection('connections').insert( {'username' : data.username, 'id' : this } );
+					});
+				}
+				else {
+					socket.emit('login', { status: 'failed', message: 'Bad Username / Password' } );
+				}
 			}
 			else {
-				var collection = db.collection('users');
-				collection.find({ 'username' : data.username }).toArray(function(err, docs) {					
-					if (err) {
-						socket.emit('chaterror', { 'message' : 'Some error' });
-					}
-					else if (docs.length == 0) {
-						socket.emit('chaterror', { message : 'Bad login' });
-					}
-					else {
-						user = docs[0];
-						if (data.password == user.password) {
-							db.collection('connections').deleteMany({ 'username' : data.username }, function(err, res) {
-								console.log('Add new entry');
-								db.collection('connections').insert( {'username' : data.username, 'id' : this } );
-							});
-						}
-						else {
-							socket.emit('chaterror', { message: 'Bar username/password'} );
-						}
-					}
-				});
+				socket.emit('login', { status : 'failed' });				
 			}
 		});
 	});

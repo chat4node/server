@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Socket.IO Test</title>
+
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="chat4node-client.src.js"></script>
+	<script>
+
+//		socket.emit('whatever event', { my: 'data' });
+
+		var c4nclient = null;
+
+		function action() {
+			switch ($("#selAction").val()) {
+				case 'sendMessage':
+					break;
+				case 'adminGetAllUsers':
+					$("#selUsers option").remove();
+					c4nclient.admin('listUsers', function(data) {
+						if (data.status == 'ok') {
+							for (var i = 0; i < data.users.length; i++) {
+								$("#selUsers").append('<option value="' + data.users[i].username + '">' + data.users[i].username + '</option>');
+							}
+						}
+					});
+					break;
+			}
+		}
+
+		function connect() {
+			c4nclient.connect(
+				{
+					hostname : 'localhost',
+					username : $("#txtMessagesUsername").val(),
+					password : $("#txtMessagesPassword").val()
+				},
+				function(data) {
+					;
+				}
+			);
+		}
+
+		$(function() {
+			$("#selAction").on('change', action);
+			c4nclient = new chat4node.Client();
+		});
+	</script>
+
+	<style type="text/css">
+		#selUsers {
+			height: 50em;
+			width: 50em;
+		}
+	</style>
+</head>
+<body>
+	<select id="selAction">
+		<option value="sendMessage">Send Message</option>
+		<option value="adminAddUser">Add User</option>
+		<option value="adminGetUser">Get User</option>
+		<option value="adminGetAllUsers">Get All Users</option>
+		<option value="adminDeleteUser">Delete User</option>
+		<option value="adminAddGroup">Add Group</option>
+		<option value="adminGetGroup">Get Group</option>
+		<option value="adminGetAllGroups">Get All Groups</option>
+		<option value="adminDeleteGroup">Delete Group</option>
+	</select>
+
+	<div id="divMessages">
+		Username: <input type="text" id="txtMessagesUsername" value="eero"><br>
+		Password: <input type="text" id="txtMessagesPassword" value="foo"><br>
+		<button id="btndivMessagesConnect" onclick="connect();">Connect</button>
+		<br>
+		<div id="divMessagesMessages"></div>
+		<textarea id="txtMessagesMessage" row="5"></textarea>
+		<button id="btndivMessagesSend" onclick="sendMessage();">Send</button>
+	</div>
+
+	<div id="divEditUser" style="display: none;">
+		Username: <input type="text" id="txtEditUserUsername" value=""><br>
+		Password: <input type="text" id="txtEditUserPassword" value=""><br>
+		Groups: <select id="selEditUserGroups" multiple></select>
+	</div>
+
+	<select id="selUsers" multiple></select>
+
+</body>
+</html>
